@@ -1,0 +1,245 @@
+openapi: 3.1.0
+info:
+  title: ARK Escrow – User Management API
+  version: 0.1.0
+  description: |
+    Authentication uses a custom header:
+      Authentication: Bearer <jwt>
+    The JWT is signed by the server and includes a `userId` (UUID) claim.
+
+servers:
+  - url: https://api.ark-escrow.example.com
+
+tags:
+  - name: Auth
+  - name: Users
+
+components:
+  securitySchemes:
+    BearerAuthHeader:
+      type: apiKey
+      in: header
+      name: Authentication
+      description: |
+        Use value: `Bearer <jwt>`. JWT contains a `userId` (UUID) claim.
+  schemas:
+    UUID:
+      type: string
+      format: uuid
+      examples: ["6f1a7c2a-6e70-4a9b-a2c7-0e8d4f3f7b2a"]
+    ErrorResponse:
+      type: object
+      required: [errors]
+      properties:
+        errors:
+          type: array
+          items:
+            type: string
+      examples:
+        - errors: ["username already taken"]
+    EmptyDataEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          description: Empty object on success
+      examples:
+        - data: {}
+    AuthSuccessEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [userId, accessToken]
+          properties:
+            userId:
+              $ref: '#/components/schemas/UUID'
+            accessToken:
+              type: string
+              description: JWT access token
+          additionalProperties: false
+      examples:
+        - data:
+            userId: "6f1a7c2a-6e70-4a9b-a2c7-0e8d4f3f7b2a"
+            accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    SignUpRequest:
+      type: object
+      required: [username, publicKey, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+        publicKey:
+          type: string
+          description: User’s public key (unique)
+        password:
+          type: string
+          minLength: 8
+          maxLength: 16
+      additionalProperties: false
+      examples:
+        - username: "satoshi"
+          publicKey: "02ab...ff"
+          password: "hunter2!!"
+    SignInRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+      additionalProperties: false
+      examples:
+        - username: "satoshi"
+          password: "hunter2!!"
+    UpdateUserRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 3
+        password:
+          type: string
+          minLength: 8
+          maxLength: 16
+      additionalProperties: false
+      minProperties: 1
+      examples:
+        - username: "satoshi_nakamoto"
+        - password: "NewPassw0rd"
+        - username: "satoshi_nakamoto"
+          password: "NewPassw0rd"
+
+  responses:
+    Error400:
+      description: Validation error (non-uniqueness handled by 422)
+      content:
+        application/json:
+          schema: $ref: '#/components/schemas/ErrorResponse'
+    Error401:
+      description: Unauthorized / wrong credentials
+      content:
+        application/json:
+          schema: $ref: '#/components/schemas/ErrorResponse'
+    Error403:
+      description: Forbidden (e.g., `user_id` mismatch with JWT `userId`)
+      content:
+        application/json:
+          schema: $ref: '#/components/schemas/ErrorResponse'
+    Error422:
+      description: Unprocessable Entity (uniqueness violations)
+      content:
+        application/json:
+          schema: $ref: '#/components/schemas/ErrorResponse'
+
+paths:
+  /signup:
+    post:
+      tags: [Auth]
+      summary: Sign up a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: $ref: '#/components/schemas/SignUpRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: $ref: '#/components/schemas/AuthSuccessEnvelope'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '422':
+          $ref: '#/components/responses/Error422'
+
+  /signin:
+    post:
+      tags: [Auth]
+      summary: Sign in with username and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: $ref: '#/components/schemas/SignInRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: $ref: '#/components/schemas/AuthSuccessEnvelope'
+        '401':
+          $ref: '#/components/responses/Error401'
+
+  /signout:
+    post:
+      tags: [Auth]
+      summary: Sign out (invalidate session/token as applicable)
+      security:
+        - BearerAuthHeader: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: $ref: '#/components/schemas/EmptyDataEnvelope'
+        '401':
+          $ref: '#/components/responses/Error401'
+
+  /users/{user_id}:
+    delete:
+      tags: [Users]
+      summary: Delete the authenticated user
+      security:
+        - BearerAuthHeader: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/UUID' }
+      responses:
+        '200':
+          description: OK (user deleted and logged out)
+          content:
+            application/json:
+              schema: $ref: '#/components/schemas/EmptyDataEnvelope'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+
+    patch:
+      tags: [Users]
+      summary: Update username and/or password for the authenticated user
+      security:
+        - BearerAuthHeader: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/UUID' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: $ref: '#/components/schemas/EmptyDataEnvelope'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '422':
+          $ref: '#/components/responses/Error422'
