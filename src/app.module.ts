@@ -1,22 +1,24 @@
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { UsersModule } from './users/users.module';
-import { AuthModule } from './auth/auth.module';
-import { User } from './users/user.entity';
-import * as dotenv from 'dotenv';
+import {Module} from "@nestjs/common";
+import {TypeOrmModule} from "@nestjs/typeorm";
+import {AuthModule} from "./auth/auth.module";
+import {User} from "./users/user.entity";
 
-dotenv.config();
+const isTest = process.env.NODE_ENV === "test";
 
 @Module({
-  imports: [
-    TypeOrmModule.forRoot({
-      type: 'sqlite',
-      database: process.env.SQLITE_DB_PATH || './data/ark-escrow.sqlite',
-      entities: [User],
-      synchronize: true
-    }),
-    UsersModule,
-    AuthModule
-  ]
+    imports: [
+        TypeOrmModule.forRootAsync({
+            useFactory: () => ({
+                type: "sqlite",
+                database: isTest
+                    ? ":memory:"
+                    : (process.env.SQLITE_DB_PATH ?? "./data/ark-escrow.sqlite"),
+                entities: [User],
+                synchronize: true,
+            }),
+        }),
+        AuthModule,
+    ],
 })
-export class AppModule {}
+export class AppModule {
+}
