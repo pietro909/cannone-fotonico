@@ -17,7 +17,8 @@
 		"fmt": "biome format src",
 		"---------------------------- Utils --------------------------------------------------------": "",
 		"fmt:fix": "biome format --write src",
-		"lint:fix": "biome lint --write --unsafe src"
+		"lint:fix": "biome lint --write --unsafe src",
+		"ci:check": "biome ci"
 	},
 	"dependencies": {
 		"@nestjs/common": "^11.1.6",

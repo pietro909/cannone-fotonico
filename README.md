@@ -1,4 +1,9 @@
+### Tech stack
 
+- Typescript
+- NestJS
+- SQLite
+ 
 ### Development Workflow
 
 1. **Start development environment:**
@@ -18,21 +23,6 @@
    docker compose down
    ```
 
-### [WIP] Production Deployment
+###  Production Deployment
 
-For production deployment:
-
-1. **Build the production image:**
-   ```bash
-   docker build -t your-nestjs-app:latest .
-   ```
-
-2. **Run with proper environment variables:**
-   ```bash
-   docker run -d \
-     -p 3000:3000 \
-     -v $(pwd)/data:/app/data \
-     --env-file .env.production \
-     --restart unless-stopped \
-     your-nestjs-app:latest
-   ```
+TODO
