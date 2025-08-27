@@ -11,7 +11,7 @@ import { AuthService } from "./auth.service";
 import type { RequestChallengeDto } from "./dto/request-challenge.dto";
 import type { VerifySignupDto } from "./dto/verify-signup.dto";
 
-@ApiTags("auth")
+@ApiTags("Authentication")
 @Controller("auth")
 export class AuthController {
 	constructor(private readonly auth: AuthService) {}

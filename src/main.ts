@@ -23,19 +23,18 @@ async function bootstrap() {
 		.setTitle("ARK Escrow API")
 		.setDescription("Custom header auth: `Authentication: Bearer <jwt>`")
 		.setVersion("0.0.2")
-		.addBearerAuth()
-		.addApiKey(
-			{ type: "apiKey", name: "Authentication", in: "header" },
-			"Authentication",
+		.addBearerAuth(
+			{ type: "http", scheme: "bearer", bearerFormat: "JWT", in: "header" },
+			"bearer",
 		)
 		.build();
 	const doc = SwaggerModule.createDocument(app, config);
 	SwaggerModule.setup("docs", app, doc);
 
 	const port = parseInt(process.env.PORT ?? "3000", 10);
-	await app.listen(port);
+	await app.listen(port, "0.0.0.0");
 	// eslint-disable-next-line no-console
-	console.log(`API listening on http://localhost:${port}`);
+	console.log(`API listening on http://0.0.0.0:${port}`);
 }
 
 bootstrap();

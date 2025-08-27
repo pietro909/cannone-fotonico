@@ -3,22 +3,22 @@
 
 1. **Start development environment:**
    ```bash
-   docker-compose --profile dev up app-dev
+   docker compose --profile dev up api-dev
    ```
 
 2. **Make changes to your code** - changes will be automatically reflected due to volume mounting and hot reload
 
 3. **View logs:**
    ```bash
-   docker-compose logs -f app-dev
+   docker compose logs -f api-dev
    ```
 
 4. **Stop development environment:**
    ```bash
-   docker-compose down
+   docker compose down
    ```
 
-### Production Deployment
+### [WIP] Production Deployment
 
 For production deployment:
 
@@ -36,7 +36,3 @@ For production deployment:
      --restart unless-stopped \
      your-nestjs-app:latest
    ```
-
-### Health Check
-
-The application includes a health check endpoint. Make sure to implement a `/health` endpoint in your NestJS application for the Docker health check to work properly.
