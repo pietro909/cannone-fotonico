@@ -9,9 +9,9 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { hexToBytes } from "@noble/hashes/utils";
 import { schnorr } from "@noble/secp256k1";
 import type { Repository } from "typeorm";
-import { createSignupChallenge, hashSignupPayload } from "@/crypto/challenge";
-import { normalizeToXOnly } from "@/crypto/keys";
-import { User } from "@/users/user.entity";
+import { createSignupChallenge, hashSignupPayload } from "../crypto/challenge";
+import { normalizeToXOnly } from "../crypto/keys";
+import { User } from "../users/user.entity";
 
 const CHALLENGE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -76,17 +76,18 @@ export class AuthService {
 		}
 
 		const hashHex = hashSignupPayload(payload);
+		let ok = false;
 		try {
-			const ok = schnorr.verify(
+			ok = schnorr.verify(
 				hexToBytes(signatureHex),
 				hexToBytes(hashHex),
 				hexToBytes(publicKey),
 			);
-			if (!ok) {
-				throw new UnauthorizedException("Invalid signature");
-			}
 		} catch (e: unknown) {
 			throw new BadRequestException("Invalid signature input");
+		}
+		if (!ok) {
+			throw new UnauthorizedException("Invalid signature");
 		}
 
 		user.pendingChallenge = null;

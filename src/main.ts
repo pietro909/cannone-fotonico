@@ -4,8 +4,13 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import * as dotenv from "dotenv";
 import { AppModule } from "./app.module";
 import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
+import { hashes } from "@noble/secp256k1";
+import { sha256 } from "@noble/hashes/sha2";
 
 dotenv.config();
+
+// CRITICAL: Set up the hash function for secp256k1
+hashes.sha256 = sha256;
 
 async function bootstrap() {
 	const app = await NestFactory.create(AppModule);

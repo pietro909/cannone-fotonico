@@ -17,7 +17,7 @@ module.exports = {
 			},
 		],
 	},
-	transformIgnorePatterns: ["node_modules/(?!@noble)"],
+	transformIgnorePatterns: ["node_modules/(?!@noble|nanoid)"],
 	collectCoverageFrom: ["src/**/*.ts"],
 	coverageDirectory: "./coverage",
 	testEnvironment: "node",

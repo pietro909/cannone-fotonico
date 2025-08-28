@@ -12,7 +12,7 @@ export class AuthGuard implements CanActivate {
 
 	canActivate(context: ExecutionContext): boolean {
 		const req = context.switchToHttp().getRequest();
-		const header: string | undefined = req.headers.authentication;
+		const header: string | undefined = req.headers.authorization;
 		if (!header)
 			throw new UnauthorizedException("Missing Authentication header");
 
@@ -21,12 +21,11 @@ export class AuthGuard implements CanActivate {
 			throw new UnauthorizedException("Invalid Authentication format");
 
 		try {
-			const payload = this.jwt.verify(token, {
-				secret: process.env.JWT_SECRET!,
-			});
-			req.user = { userId: payload.userId };
+			const payload = this.jwt.verify(token);
+			req.user = { userId: payload.sub };
 			return true;
-		} catch {
+		} catch (e) {
+			console.error(e);
 			throw new UnauthorizedException("Invalid or expired token");
 		}
 	}

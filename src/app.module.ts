@@ -6,7 +6,7 @@ import { HealthModule } from "./health.module";
 import { EscrowRequestsModule } from "./escrows/requests/escrow-requests.module";
 import { EscrowRequest } from "./escrows/requests/escrow-request.entity";
 import { ConfigModule } from "@nestjs/config";
-import { UsersModule } from "@/users/users.module";
+import { UsersModule } from "./users/users.module";
 
 const isTest = process.env.NODE_ENV === "test";
 

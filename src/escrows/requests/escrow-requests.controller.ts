@@ -7,7 +7,7 @@ import {
 	Query,
 	UseGuards,
 } from "@nestjs/common";
-import { UserFromJwt } from "@/auth/user.decorator";
+import { UserFromJwt } from "../../auth/user.decorator";
 import { EscrowRequestsService } from "./escrow-requests.service";
 import {
 	CreateEscrowRequestDto,
@@ -20,7 +20,7 @@ import {
 	envelope,
 	ApiEnvelopeShellDto,
 	ApiMetaDto,
-} from "@/common/dto/envelopes";
+} from "../../common/dto/envelopes";
 
 import {
 	ApiBearerAuth,
@@ -35,7 +35,7 @@ import {
 	ApiUnauthorizedResponse,
 	getSchemaPath,
 } from "@nestjs/swagger";
-import { AuthGuard } from "@/auth/auth.guard";
+import { AuthGuard } from "../../auth/auth.guard";
 
 @ApiTags("Escrow Requests")
 @ApiExtraModels(

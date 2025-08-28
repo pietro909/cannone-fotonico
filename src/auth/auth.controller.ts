@@ -8,8 +8,10 @@ import {
 } from "@nestjs/swagger";
 // biome-ignore lint/style/useImportType: it used for Dependency Injection
 import { AuthService } from "./auth.service";
-import type { RequestChallengeDto } from "./dto/request-challenge.dto";
-import type { VerifySignupDto } from "./dto/verify-signup.dto";
+// biome-ignore lint/style/useImportType: it used for Dependency Injection
+import { RequestChallengeDto } from "./dto/request-challenge.dto";
+// biome-ignore lint/style/useImportType: it used for Dependency Injection
+import { VerifySignupDto } from "./dto/verify-signup.dto";
 
 @ApiTags("Authentication")
 @Controller("auth")
