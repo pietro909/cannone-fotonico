@@ -10,6 +10,7 @@ import {
 import {
 	ApiBadRequestResponse,
 	ApiBody,
+	ApiExtraModels,
 	ApiOkResponse,
 	ApiOperation,
 	ApiSecurity,
@@ -22,6 +23,7 @@ import { RequestChallengeDto } from "./dto/request-challenge.dto";
 import { VerifySignupDto } from "./dto/verify-signup.dto";
 
 @ApiTags("Authentication")
+@ApiExtraModels(RequestChallengeDto, VerifySignupDto)
 @Controller("api/v1/auth")
 export class AuthController {
 	constructor(private readonly auth: AuthService) {}

@@ -5,9 +5,6 @@ import { User } from "./user.entity";
 
 @Injectable()
 export class UsersService {
+	// biome-ignore lint/correctness/noUnusedPrivateClassMembers: TODO work on users
 	constructor(@InjectRepository(User) private repo: Repository<User>) {}
-
-	async deleteById(id: string): Promise<void> {
-		await this.repo.delete(id);
-	}
 }

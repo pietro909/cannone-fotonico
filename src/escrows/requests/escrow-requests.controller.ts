@@ -37,7 +37,7 @@ import {
 	OrderbookItemDto,
 } from "./dto/create-escrow-request.dto";
 import { EscrowRequestsService } from "./escrow-requests.service";
-import {User} from "../../users/user.entity";
+import { User } from "../../users/user.entity";
 
 @ApiTags("Escrow Requests")
 @ApiExtraModels(
@@ -47,12 +47,11 @@ import {User} from "../../users/user.entity";
 	EscrowRequestGetDto,
 	OrderbookItemDto,
 )
-@Controller()
+@Controller("api/v1/escrows")
 export class EscrowRequestsController {
 	constructor(private readonly service: EscrowRequestsService) {}
 
-	// POST /escrows/requests
-	@ApiOperation({ summary: "Create an escrow request" })
+	@Post("requests")
 	@ApiBearerAuth()
 	@ApiBody({ type: CreateEscrowRequestDto })
 	@ApiOkResponse({
@@ -72,7 +71,7 @@ export class EscrowRequestsController {
 	})
 	@ApiUnauthorizedResponse({ description: "Missing/invalid JWT" })
 	@UseGuards(AuthGuard)
-	@Post("api/v1/escrows/requests")
+	@ApiOperation({ summary: "Create an escrow request" })
 	async create(
 		@Body() dto: CreateEscrowRequestDto,
 		@UserFromJwt() user: User,
@@ -81,11 +80,57 @@ export class EscrowRequestsController {
 		return envelope(data);
 	}
 
-	// GET /escrows/requests/:externalId
-	@ApiOperation({
-		summary:
-			"Get a single escrow request by externalId (requires auth unless public and owned by caller)",
+	@Get("requests/mine")
+	@ApiBearerAuth()
+	@ApiQuery({
+		name: "limit",
+		required: false,
+		description: "Max items to return (1–100)",
+		schema: { type: "integer", minimum: 1, maximum: 100, example: 20 },
 	})
+	@ApiQuery({
+		name: "cursor",
+		required: false,
+		description: "Opaque cursor from previous page",
+		schema: { type: "string", example: "MTczMjc5NDQ2NTAwMDoxMjM0NQ==" },
+	})
+	@ApiOkResponse({
+		description: "A page of user's requests",
+		schema: {
+			allOf: [
+				{ $ref: getSchemaPath(ApiPaginatedEnvelopeShellDto) },
+				{
+					type: "object",
+					properties: {
+						data: {
+							type: "array",
+							items: { $ref: getSchemaPath(EscrowRequestGetDto) },
+						},
+						meta: { $ref: getSchemaPath(ApiPaginatedMetaDto) },
+					},
+					required: ["data", "meta"],
+				},
+			],
+		},
+	})
+	@ApiUnauthorizedResponse({ description: "Missing/invalid JWT" })
+	@UseGuards(AuthGuard)
+	@ApiOperation({ summary: "Get authenticated user's escrow requests" })
+	async getMine(
+		@UserFromJwt() user: User,
+		@Query("limit") limit?: string,
+		@Query("cursor") cursor?: string,
+	): Promise<ApiEnvelope<EscrowRequestGetDto[]>> {
+		const n = limit ? parseInt(limit, 10) : undefined;
+		const { items, nextCursor, total } = await this.service.getByUser(
+			user.publicKey,
+			n,
+			cursor,
+		);
+		return paginatedEnvelope(items, { total, nextCursor });
+	}
+
+	@Get("requests/:externalId")
 	@ApiBearerAuth()
 	@ApiOkResponse({
 		description: "Escrow request",
@@ -106,19 +151,19 @@ export class EscrowRequestsController {
 	@ApiForbiddenResponse({ description: "Not allowed to view this request" })
 	@ApiNotFoundResponse({ description: "Escrow request not found" })
 	@UseGuards(AuthGuard)
-	@Get("api/v1/escrows/requests/:externalId")
+	@ApiOperation({
+		summary:
+			"Get a single escrow request by externalId (requires auth unless public and owned by caller)",
+	})
 	async getOne(
 		@Param("externalId") externalId: string,
-        @UserFromJwt() user: User,
-    ): Promise<ApiEnvelope<EscrowRequestGetDto>> {
+		@UserFromJwt() user: User,
+	): Promise<ApiEnvelope<EscrowRequestGetDto>> {
 		const data = await this.service.getByExternalId(externalId, user.publicKey);
 		return envelope(data);
 	}
 
-	// GET /orderbook?cursor&limit
-	@ApiOperation({
-		summary: "Public orderbook of escrow requests (only public=true)",
-	})
+	@Get("orderbook")
 	@ApiQuery({
 		name: "limit",
 		required: false,
@@ -150,7 +195,9 @@ export class EscrowRequestsController {
 			],
 		},
 	})
-	@Get("api/v1/orderbook")
+	@ApiOperation({
+		summary: "Public orderbook of escrow requests (only public=true)",
+	})
 	async orderbook(
 		@Query("limit") limit?: string,
 		@Query("cursor") cursor?: string,

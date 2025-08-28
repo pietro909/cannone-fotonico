@@ -1,6 +1,8 @@
 import {
 	ForbiddenException,
 	Injectable,
+	InternalServerErrorException,
+	Logger,
 	NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -24,6 +26,7 @@ const generateNanoid = customAlphabet(
 @Injectable()
 export class EscrowRequestsService {
 	private readonly shareBase: string;
+	private readonly logger = new Logger(EscrowRequestsService.name);
 
 	constructor(
 		@InjectRepository(EscrowRequest)
@@ -43,25 +46,30 @@ export class EscrowRequestsService {
 		pubKey: string,
 	): Promise<EscrowRequestCreatedDto> {
 		const externalId = generateNanoid();
-		const entity = this.escrowRequestRepository.create({
-			externalId,
-			side: dto.side,
-			pubkey: pubKey,
-			amount: dto.amount ?? null,
-			description: dto.description,
-			public: dto.public ?? false,
-		});
-		await this.escrowRequestRepository.save(entity);
-		return {
-			externalId,
-			shareUrl: `${this.shareBase}/${externalId}`,
-		};
+		try {
+			const entity = this.escrowRequestRepository.create({
+				externalId,
+				side: dto.side,
+				pubkey: pubKey,
+				amount: dto.amount ?? null,
+				description: dto.description,
+				public: dto.public ?? false,
+			});
+			await this.escrowRequestRepository.save(entity);
+			return {
+				externalId,
+				shareUrl: `${this.shareBase}/${externalId}`,
+			};
+		} catch (e) {
+			this.logger.error("Failed to create escrow request", e);
+			throw new InternalServerErrorException("Failed to create escrow request");
+		}
 	}
 
 	async getByExternalId(
 		externalId: string,
-        pubKey: string,
-    ): Promise<EscrowRequestGetDto> {
+		pubKey: string,
+	): Promise<EscrowRequestGetDto> {
 		const found = await this.escrowRequestRepository.findOne({
 			where: { externalId },
 		});
@@ -85,6 +93,81 @@ export class EscrowRequestsService {
 	 * Cursor is base64(`${createdAtMs}:${id}`).
 	 * Returns the current page and the nextCursor (if more items exist), plus total public items.
 	 */
+	async getByUser(
+		pubKey: string,
+		limit = 20,
+		cursor?: string,
+	): Promise<{
+		items: EscrowRequestGetDto[];
+		nextCursor?: string;
+		total: number;
+	}> {
+		let createdBefore: number | undefined;
+		let idBefore: number | undefined;
+
+		if (cursor) {
+			try {
+				const raw = Buffer.from(cursor, "base64").toString("utf8");
+				// cursor format: `${createdAtMs}:${id}`
+				const [tsStr, idStr] = raw.split(":");
+				const ts = Number(tsStr);
+				const idNum = Number(idStr);
+				if (Number.isFinite(ts)) createdBefore = ts;
+				if (Number.isFinite(idNum)) idBefore = idNum;
+			} catch (e: unknown) {
+				this.logger.error("Malformed cursor", e);
+			}
+		}
+
+		const take = Math.min(Math.max(limit ?? 1, 1), 100);
+
+		const qb = this.escrowRequestRepository
+			.createQueryBuilder("r")
+			.where("r.pubkey = :pubKey", { pubKey });
+
+		if (createdBefore !== undefined && idBefore !== undefined) {
+			qb.andWhere(
+				new Brackets((w) => {
+					w.where("r.createdAt < :createdBefore", {
+						createdBefore: new Date(createdBefore),
+					}).orWhere(
+						new Brackets((w2) => {
+							w2.where("r.createdAt = :createdAtEq", {
+								createdAtEq: new Date(createdBefore),
+							}).andWhere("r.id < :idBefore", { idBefore });
+						}),
+					);
+				}),
+			);
+		}
+
+		const rows = await qb
+			.orderBy("r.createdAt", "DESC")
+			.addOrderBy("r.id", "DESC")
+			.take(take)
+			.getMany();
+
+		const total = await this.escrowRequestRepository.count({
+			where: { pubkey: pubKey },
+		});
+
+		let nextCursor: string | undefined;
+		if (rows.length === take) {
+			const last = rows[rows.length - 1];
+			nextCursor = EscrowRequestsService.makeCursor(last.createdAt, last.id);
+		}
+
+		const items: EscrowRequestGetDto[] = rows.map((r) => ({
+			side: r.side as "sell" | "buy",
+			amount: r.amount ?? undefined,
+			description: r.description,
+			public: r.public,
+			createdAt: r.createdAt.getTime(),
+		}));
+
+		return { items, nextCursor, total };
+	}
+
 	async orderbook(
 		limit = 20,
 		cursor?: string,
@@ -105,8 +188,8 @@ export class EscrowRequestsService {
 				const idNum = Number(idStr);
 				if (Number.isFinite(ts)) createdBefore = ts;
 				if (Number.isFinite(idNum)) idBefore = idNum;
-			} catch {
-				/* ignore malformed cursor */
+			} catch (e: unknown) {
+				this.logger.error("Malformed cursor", e);
 			}
 		}
 

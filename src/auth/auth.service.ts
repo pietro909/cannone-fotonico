@@ -3,6 +3,7 @@ import {
 	Injectable,
 	InternalServerErrorException,
 	UnauthorizedException,
+	Logger,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -21,6 +22,8 @@ const CHALLENGE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 @Injectable()
 export class AuthService {
+	private readonly logger = new Logger(AuthService.name);
+
 	constructor(
 		@InjectRepository(User) private readonly users: Repository<User>,
 		private readonly jwt: JwtService,
@@ -40,8 +43,12 @@ export class AuthService {
 		user.challengeId = id;
 		user.challengeExpiresAt = new Date(now.getTime() + CHALLENGE_TTL_MS);
 
-		await this.users.save(user);
-
+		try {
+			await this.users.save(user);
+		} catch (e) {
+			this.logger.error("Failed to save user", e);
+			throw new InternalServerErrorException("Failed to save user");
+		}
 		return {
 			challenge: payload,
 			challengeId: id,
@@ -72,7 +79,8 @@ export class AuthService {
 		let payload: ChallengePayload | undefined;
 		try {
 			payload = JSON.parse(user.pendingChallenge);
-		} catch {
+		} catch (e) {
+			this.logger.error("Corrupt challenge", e);
 			throw new InternalServerErrorException("Corrupt challenge");
 		}
 		if (payload?.origin !== origin || payload?.type !== "signup") {
@@ -87,7 +95,7 @@ export class AuthService {
 				hexToBytes(hashHex),
 				hexToBytes(publicKey),
 			);
-		} catch (_e: unknown) {
+		} catch (e: unknown) {
 			throw new BadRequestException("Invalid signature input");
 		}
 		if (!ok) {
@@ -98,7 +106,13 @@ export class AuthService {
 		user.challengeId = null;
 		user.challengeExpiresAt = null;
 		user.lastLoginAt = new Date();
-		await this.users.save(user);
+
+		try {
+			await this.users.save(user);
+		} catch (e) {
+			this.logger.error("Failed to save user", e);
+			throw new InternalServerErrorException("Failed to save user");
+		}
 
 		const accessToken = await this.jwt.signAsync({
 			sub: user.id,
