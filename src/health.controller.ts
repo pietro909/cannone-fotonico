@@ -2,7 +2,7 @@ import { Controller, Get } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
 
 @ApiTags("Health")
-@Controller("health")
+@Controller("api/v1/health")
 export class HealthController {
 	@Get()
 	@ApiOperation({ summary: "Health check endpoint" })

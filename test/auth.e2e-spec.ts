@@ -35,7 +35,7 @@ describe("Auth E2E (signup)", () => {
 		const pubXOnlyHex = Buffer.from(getPublicKey(priv, true)).toString("hex"); // compressed
 		// 1) request challenge
 		const chalRes = await request(app.getHttpServer())
-			.post("/auth/signup/challenge")
+			.post("/api/v1/auth/signup/challenge")
 			.set("Origin", "http://localhost:test")
 			.send({ publicKey: pubXOnlyHex })
 			.expect(201);
@@ -51,7 +51,7 @@ describe("Auth E2E (signup)", () => {
 
 		// 3) verify
 		const verifyRes = await request(app.getHttpServer())
-			.post("/auth/signup/verify")
+			.post("/api/v1/auth/signup/verify")
 			.set("Origin", "http://localhost:test")
 			.send({
 				publicKey: pubXOnlyHex,

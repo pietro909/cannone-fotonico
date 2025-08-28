@@ -1,24 +1,27 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
-export class EmptyDataEnvelope {
-	data: Record<string, never> = {};
-}
-
-export class ErrorResponse {
-	errors!: string[];
-}
-
-export type ApiMeta = {
+export type ApiPaginatedMeta = {
 	nextCursor?: string;
 	total: number;
 };
 
-export type ApiEnvelope<T> = {
+export type ApiPaginatedEnvelope<T> = {
 	data: T;
-	meta: ApiMeta;
+	meta: ApiPaginatedMeta;
 };
 
-export const envelope = <T>(data: T, meta: ApiMeta): ApiEnvelope<T> => ({
+export type ApiEnvelope<T> = {
+	data: T;
+};
+
+export const envelope = <T>(data: T): ApiEnvelope<T> => ({
+	data,
+});
+
+export const paginatedEnvelope = <T>(
+	data: T,
+	meta: ApiPaginatedMeta,
+): ApiPaginatedEnvelope<T> => ({
 	data,
 	meta,
 });
@@ -27,7 +30,7 @@ export const envelope = <T>(data: T, meta: ApiMeta): ApiEnvelope<T> => ({
  * Swagger-only DTOs to describe the envelope in responses.
  * We’ll compose them with `getSchemaPath` in controllers.
  */
-export class ApiMetaDto implements ApiMeta {
+export class ApiPaginatedMetaDto implements ApiPaginatedMeta {
 	@ApiPropertyOptional({
 		description:
 			"Opaque cursor to fetch the next page. Omitted when there is no next page.",
@@ -43,13 +46,20 @@ export class ApiMetaDto implements ApiMeta {
 }
 
 /** Placeholder “envelope” shell; `data` is overridden per-endpoint in controller schemas. */
-export class ApiEnvelopeShellDto {
+export class ApiPaginatedEnvelopeShellDto<T> {
 	@ApiProperty({
 		description: "Payload for this endpoint (shape varies by route)",
 	})
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	data!: any;
+	data!: T;
+}
 
-	@ApiProperty({ type: () => ApiMetaDto })
-	meta!: ApiMetaDto;
+/** Placeholder “envelope” shell; `data` is overridden per-endpoint in controller schemas. */
+export class ApiEnvelopeShellDto<T> {
+	@ApiProperty({
+		description: "Payload for this endpoint (shape varies by route)",
+	})
+	data!: T;
+
+	@ApiProperty({ type: () => ApiPaginatedMetaDto })
+	meta!: ApiPaginatedMetaDto;
 }

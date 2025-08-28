@@ -34,11 +34,10 @@ async function bootstrap() {
 		)
 		.build();
 	const doc = SwaggerModule.createDocument(app, config);
-	SwaggerModule.setup("docs", app, doc);
+	SwaggerModule.setup("api/v1/docs", app, doc);
 
 	const port = parseInt(process.env.PORT ?? "3000", 10);
 	await app.listen(port, "0.0.0.0");
-	// eslint-disable-next-line no-console
 	console.log(`API listening on http://0.0.0.0:${port}`);
 }
 

@@ -4,7 +4,7 @@ import {
 	NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { type Repository, LessThan, Brackets } from "typeorm";
+import { type Repository, Brackets } from "typeorm";
 import { customAlphabet } from "nanoid";
 import { EscrowRequest } from "./escrow-request.entity";
 import type {
@@ -40,28 +40,13 @@ export class EscrowRequestsService {
 
 	async create(
 		dto: CreateEscrowRequestDto,
-		jwtUserId: string,
+		pubKey: string,
 	): Promise<EscrowRequestCreatedDto> {
-		const user = await this.userRepository.findOne({
-			where: { publicKey: dto.pubkey },
-		});
-		if (user === null) {
-			throw new ForbiddenException("pubkey mismatch");
-		}
-		if (user.pendingChallenge) {
-			throw new ForbiddenException("pubkey is pending challenge");
-		}
-		if (user.challengeExpiresAt && user.challengeExpiresAt < new Date()) {
-			throw new ForbiddenException("pubkey is expired challenge");
-		}
-		if (user.publicKey !== dto.pubkey) {
-			throw new ForbiddenException("pubkey mismatch");
-		}
 		const externalId = generateNanoid();
 		const entity = this.escrowRequestRepository.create({
 			externalId,
 			side: dto.side,
-			pubkey: dto.pubkey,
+			pubkey: pubKey,
 			amount: dto.amount ?? null,
 			description: dto.description,
 			public: dto.public ?? false,
@@ -75,14 +60,14 @@ export class EscrowRequestsService {
 
 	async getByExternalId(
 		externalId: string,
-		jwtUserId: string,
-	): Promise<EscrowRequestGetDto> {
+        pubKey: string,
+    ): Promise<EscrowRequestGetDto> {
 		const found = await this.escrowRequestRepository.findOne({
 			where: { externalId },
 		});
 		if (!found) throw new NotFoundException("Escrow request not found");
 
-		const isOwner = found.pubkey === jwtUserId;
+		const isOwner = found.pubkey === pubKey;
 		if (!found.public && !isOwner) {
 			throw new ForbiddenException("Not allowed to view this request");
 		}

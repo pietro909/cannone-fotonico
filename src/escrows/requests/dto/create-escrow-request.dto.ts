@@ -14,10 +14,6 @@ export class CreateEscrowRequestDto {
 	@IsEnum(["sell", "buy"])
 	side!: "sell" | "buy";
 
-	@ApiProperty({ description: "Creator public key" })
-	@IsString()
-	pubkey!: string;
-
 	@ApiPropertyOptional({
 		minimum: 0,
 		description: "Amount in satoshis or your smallest unit",

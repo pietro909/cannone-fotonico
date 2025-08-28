@@ -2,26 +2,11 @@ import {
 	Body,
 	Controller,
 	Get,
-	Post,
 	Param,
+	Post,
 	Query,
 	UseGuards,
 } from "@nestjs/common";
-import { UserFromJwt } from "../../auth/user.decorator";
-import { EscrowRequestsService } from "./escrow-requests.service";
-import {
-	CreateEscrowRequestDto,
-	EscrowRequestCreatedDto,
-	EscrowRequestGetDto,
-	OrderbookItemDto,
-} from "./dto/create-escrow-request.dto";
-import {
-	type ApiEnvelope,
-	envelope,
-	ApiEnvelopeShellDto,
-	ApiMetaDto,
-} from "../../common/dto/envelopes";
-
 import {
 	ApiBearerAuth,
 	ApiBody,
@@ -36,11 +21,28 @@ import {
 	getSchemaPath,
 } from "@nestjs/swagger";
 import { AuthGuard } from "../../auth/auth.guard";
+import { UserFromJwt } from "../../auth/user.decorator";
+import {
+	type ApiEnvelope,
+	ApiEnvelopeShellDto,
+	ApiPaginatedMetaDto,
+	ApiPaginatedEnvelopeShellDto,
+	envelope,
+	paginatedEnvelope,
+} from "../../common/dto/envelopes";
+import {
+	CreateEscrowRequestDto,
+	EscrowRequestCreatedDto,
+	EscrowRequestGetDto,
+	OrderbookItemDto,
+} from "./dto/create-escrow-request.dto";
+import { EscrowRequestsService } from "./escrow-requests.service";
+import {User} from "../../users/user.entity";
 
 @ApiTags("Escrow Requests")
 @ApiExtraModels(
 	ApiEnvelopeShellDto,
-	ApiMetaDto,
+	ApiPaginatedMetaDto,
 	EscrowRequestCreatedDto,
 	EscrowRequestGetDto,
 	OrderbookItemDto,
@@ -62,22 +64,21 @@ export class EscrowRequestsController {
 					type: "object",
 					properties: {
 						data: { $ref: getSchemaPath(EscrowRequestCreatedDto) },
-						meta: { $ref: getSchemaPath(ApiMetaDto) },
 					},
-					required: ["data", "meta"],
+					required: ["data"],
 				},
 			],
 		},
 	})
 	@ApiUnauthorizedResponse({ description: "Missing/invalid JWT" })
 	@UseGuards(AuthGuard)
-	@Post("escrows/requests")
+	@Post("api/v1/escrows/requests")
 	async create(
 		@Body() dto: CreateEscrowRequestDto,
-		@UserFromJwt("userId") userId: string,
+		@UserFromJwt() user: User,
 	): Promise<ApiEnvelope<EscrowRequestCreatedDto>> {
-		const data = await this.service.create(dto, userId);
-		return envelope(data, { total: 1 });
+		const data = await this.service.create(dto, user.publicKey);
+		return envelope(data);
 	}
 
 	// GET /escrows/requests/:externalId
@@ -95,9 +96,8 @@ export class EscrowRequestsController {
 					type: "object",
 					properties: {
 						data: { $ref: getSchemaPath(EscrowRequestGetDto) },
-						meta: { $ref: getSchemaPath(ApiMetaDto) },
 					},
-					required: ["data", "meta"],
+					required: ["data"],
 				},
 			],
 		},
@@ -106,13 +106,13 @@ export class EscrowRequestsController {
 	@ApiForbiddenResponse({ description: "Not allowed to view this request" })
 	@ApiNotFoundResponse({ description: "Escrow request not found" })
 	@UseGuards(AuthGuard)
-	@Get("escrows/requests/:externalId")
+	@Get("api/v1/escrows/requests/:externalId")
 	async getOne(
 		@Param("externalId") externalId: string,
-		@UserFromJwt("userId") userId: string,
-	): Promise<ApiEnvelope<EscrowRequestGetDto>> {
-		const data = await this.service.getByExternalId(externalId, userId);
-		return envelope(data, { total: 1 });
+        @UserFromJwt() user: User,
+    ): Promise<ApiEnvelope<EscrowRequestGetDto>> {
+		const data = await this.service.getByExternalId(externalId, user.publicKey);
+		return envelope(data);
 	}
 
 	// GET /orderbook?cursor&limit
@@ -135,7 +135,7 @@ export class EscrowRequestsController {
 		description: "A page of public requests",
 		schema: {
 			allOf: [
-				{ $ref: getSchemaPath(ApiEnvelopeShellDto) },
+				{ $ref: getSchemaPath(ApiPaginatedEnvelopeShellDto) },
 				{
 					type: "object",
 					properties: {
@@ -143,14 +143,14 @@ export class EscrowRequestsController {
 							type: "array",
 							items: { $ref: getSchemaPath(OrderbookItemDto) },
 						},
-						meta: { $ref: getSchemaPath(ApiMetaDto) },
+						meta: { $ref: getSchemaPath(ApiPaginatedMetaDto) },
 					},
 					required: ["data", "meta"],
 				},
 			],
 		},
 	})
-	@Get("orderbook")
+	@Get("api/v1/orderbook")
 	async orderbook(
 		@Query("limit") limit?: string,
 		@Query("cursor") cursor?: string,
@@ -160,6 +160,6 @@ export class EscrowRequestsController {
 			n,
 			cursor,
 		);
-		return envelope(items, { total, nextCursor });
+		return paginatedEnvelope(items, { total, nextCursor });
 	}
 }

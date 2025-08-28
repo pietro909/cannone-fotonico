@@ -1,15 +1,19 @@
 import {
 	BadRequestException,
 	Injectable,
+	InternalServerErrorException,
 	UnauthorizedException,
 } from "@nestjs/common";
-// biome-ignore lint/style/useImportType: it used for Dependency Injection
 import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import { hexToBytes } from "@noble/hashes/utils";
 import { schnorr } from "@noble/secp256k1";
 import type { Repository } from "typeorm";
-import { createSignupChallenge, hashSignupPayload } from "../crypto/challenge";
+import {
+	ChallengePayload,
+	createSignupChallenge,
+	hashSignupPayload,
+} from "../crypto/challenge";
 import { normalizeToXOnly } from "../crypto/keys";
 import { User } from "../users/user.entity";
 
@@ -65,13 +69,13 @@ export class AuthService {
 			throw new UnauthorizedException("Challenge expired");
 		}
 
-		let payload: any;
+		let payload: ChallengePayload | undefined;
 		try {
 			payload = JSON.parse(user.pendingChallenge);
 		} catch {
-			throw new BadRequestException("Corrupt challenge");
+			throw new InternalServerErrorException("Corrupt challenge");
 		}
-		if (payload.origin !== origin || payload.type !== "signup") {
+		if (payload?.origin !== origin || payload?.type !== "signup") {
 			throw new UnauthorizedException("Invalid challenge domain");
 		}
 
@@ -83,7 +87,7 @@ export class AuthService {
 				hexToBytes(hashHex),
 				hexToBytes(publicKey),
 			);
-		} catch (e: unknown) {
+		} catch (_e: unknown) {
 			throw new BadRequestException("Invalid signature input");
 		}
 		if (!ok) {

@@ -1,6 +1,6 @@
 import { getPublicKey } from "@noble/secp256k1";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils";
-import { normalizeToXOnly } from "../src/crypto/keys";
+import { normalizeToXOnly } from "./keys";
 
 describe("normalizeToXOnly", () => {
 	it("converts compressed to x-only", () => {

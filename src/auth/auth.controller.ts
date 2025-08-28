@@ -1,27 +1,33 @@
-import { Body, Controller, Headers, Post } from "@nestjs/common";
+import {
+	Body,
+	Controller,
+	Headers,
+	HttpCode,
+	HttpStatus,
+	Post,
+	UseGuards,
+} from "@nestjs/common";
 import {
 	ApiBadRequestResponse,
+	ApiBody,
 	ApiOkResponse,
 	ApiOperation,
+	ApiSecurity,
 	ApiTags,
 	ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
-// biome-ignore lint/style/useImportType: it used for Dependency Injection
+import { AuthGuard } from "./auth.guard";
 import { AuthService } from "./auth.service";
-// biome-ignore lint/style/useImportType: it used for Dependency Injection
 import { RequestChallengeDto } from "./dto/request-challenge.dto";
-// biome-ignore lint/style/useImportType: it used for Dependency Injection
 import { VerifySignupDto } from "./dto/verify-signup.dto";
 
 @ApiTags("Authentication")
-@Controller("auth")
+@Controller("api/v1/auth")
 export class AuthController {
 	constructor(private readonly auth: AuthService) {}
 
 	@Post("signup/challenge")
-	@ApiOperation({
-		summary: "Start signup by requesting a challenge for a given public key",
-	})
+	@ApiBody({ type: RequestChallengeDto })
 	@ApiOkResponse({
 		schema: {
 			type: "object",
@@ -33,6 +39,9 @@ export class AuthController {
 			},
 		},
 	})
+	@ApiOperation({
+		summary: "Start signup by requesting a challenge for a given public key",
+	})
 	async challenge(
 		@Body() dto: RequestChallengeDto,
 		@Headers("origin") origin?: string,
@@ -43,7 +52,7 @@ export class AuthController {
 	}
 
 	@Post("signup/verify")
-	@ApiOperation({ summary: "Verify the signed challenge and receive a JWT" })
+	@ApiBody({ type: VerifySignupDto })
 	@ApiOkResponse({
 		schema: {
 			type: "object",
@@ -56,6 +65,7 @@ export class AuthController {
 	})
 	@ApiBadRequestResponse()
 	@ApiUnauthorizedResponse()
+	@ApiOperation({ summary: "Verify the signed challenge and receive a JWT" })
 	async verify(
 		@Body() dto: VerifySignupDto,
 		@Headers("origin") origin?: string,
@@ -68,5 +78,14 @@ export class AuthController {
 			dto.challengeId,
 			effectiveOrigin,
 		);
+	}
+
+	@Post("/signout")
+	@UseGuards(AuthGuard)
+	@ApiSecurity("Authentication")
+	@HttpCode(HttpStatus.OK)
+	async signout() {
+		// TODO: void JWT
+		return { data: {} };
 	}
 }
